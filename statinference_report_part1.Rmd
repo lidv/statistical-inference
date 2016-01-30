@@ -1,0 +1,66 @@
+---
+title: 'Statistical Inference Course Project, Part 1'
+author: 'Dmitry Lishmanov'
+date: 30-01-2016
+output: pdf_document
+---
+
+The exponential distribution can be simulated in R with `rexp(n, lambda)` where `lambda` $\lambda$ is the rate parameter. The mean of exponential distribution is $1/\lambda$ and the standard deviation is also $1/\lambda$. For this simulation,we set $\lambda=0.2$. In this simulation, we investigate the distribution of averages of 40 numbers sampled from exponential distribution with $\lambda=0.2$.
+
+First we simulate 1000 averages of 40 exponentials.
+
+```{r}
+set.seed(12)
+lambda <- 0.2
+nSims <- 1000
+sample_size <- 40
+sim <- matrix(rexp(nSims*sample_size, rate=lambda), nSims, sample_size)
+row_means <- rowMeans(sim)
+```
+
+The distribution of sample means is as follows.
+
+```{r echo=FALSE}
+# histogram of averages
+hist(row_means, breaks=50, prob=TRUE,
+     main="Distribution of averages",
+     xlab="")
+# density of the averages
+lines(density(row_means))
+# theoretical center of distribution
+abline(v=1/lambda, col="deeppink")
+# theoretical density of the averages
+xfit <- seq(min(row_means), max(row_means), length=100)
+yfit <- dnorm(xfit, mean=1/lambda, sd=(1/lambda/sqrt(sample_size)))
+lines(xfit, yfit, pch=22, col="deeppink", lty=2)
+# legend
+legend('topright', c("simulation", "theoretical"), lty=c(1,2), col=c("black", "deeppink"))
+```
+
+The distribution of sample means is centered at `r mean(row_means)` and the theoretical center of the distribution is $\lambda^{-1}$ = `r 1/lambda`. The variance of sample means is `r var(row_means)` where the theoretical variance of the distribution is $\sigma^2 / n = 1/(\lambda^2 n) = 1/(0.04 \times 40)$ = `r 1/(0.04 * 40)`.
+
+According to the central limit theorem, the averages of samples follow normal distribution. The figures above illustrate the density computed using the histogram and the normal density plotted with theoretical mean and variance values. The q-q plot below suggests the normality.
+
+```{r echo=FALSE}
+qqnorm(row_means); qqline(row_means)
+```
+
+Finally we evaluate the coverage of the confidence interval for $1/\lambda = \bar{X} \pm 1.96 \frac{S}{\sqrt{n}}$
+
+```{r echo=FALSE}
+lambda_vals <- seq(4, 6, by=0.01)
+coverage <- sapply(lambda_vals, function(lamb) {
+    mu_hats <- rowMeans(matrix(rexp(sample_size*nSims, rate=0.2),
+                               nSims, sample_size))
+    ll <- mu_hats - qnorm(0.975) * sqrt(1/lambda**2/sample_size)
+    ul <- mu_hats + qnorm(0.975) * sqrt(1/lambda**2/sample_size)
+    mean(ll < lamb & ul > lamb)
+})
+
+library(ggplot2)
+qplot(lambda_vals, coverage) + geom_hline(yintercept=0.95)
+```
+
+The 95% confidence intervals for the rate parameter ($\lambda$) to be estimated ($\hat{\lambda}$) are $\hat{\lambda}_{low} = \hat{\lambda}(1 - \frac{1.96}{\sqrt{n}})$ and $\hat{\lambda}_{upp} = \hat{\lambda}(1 + \frac{1.96}{\sqrt{n}})$. As can be seen from the plot, for selection of $\hat{\lambda}$ around 5, the average of the sample mean falls within the confidence interval at least 95% of the time. Note that the theoretical rate $\lambda$ is 5.
+
+The report including the code for plots is available at https://github.com/lidv/statistical-inference/
